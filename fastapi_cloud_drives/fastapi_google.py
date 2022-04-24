@@ -38,7 +38,7 @@ class GoogleDrive:
         self.drive_service = build('drive', 'v3', credentials=self.creds)
 
 
-    async def list_files(self,
+    async def search(self,
         q: str = "",
         corpora: str = "",
         includeItemsFromAllDrives: bool = False,
@@ -95,11 +95,12 @@ class GoogleDrive:
             return str(err)
 
 
-    async def upload_file(self, filename: str, filepath: str, mimetype=None):
+    async def upload_file(self, filename: str, desc_name: str, filepath: str, mimetype=None):
         """[Upload file to google drive]
 
         Args:
-            filename (str): [fielname is used to create file in google drive]
+            filename (str): [filename is used to create file in google drive]
+            description (str): [file description]
             filepath (str): [filepath to file which to upload]
             mimetype ([type], optional): [Google detects it automatically]. Defaults to None.
 
@@ -108,7 +109,10 @@ class GoogleDrive:
         """
         __file = self.drive_service.files()
 
-        file_metadata = {"name" : filename}
+        file_metadata = {
+            'name': filename,
+            'description': desc_name
+        }
 
         media = MediaFileUpload(
             filepath,
@@ -121,29 +125,6 @@ class GoogleDrive:
                 fields='id'
                 ).execute()
             return __drive_file.get("id")
-        except Exception as err:
-            return str(err)
-
-
-    async def create_folder(self, folder_name: str):
-        """[Create folder in Google Drive]
-
-        Args:
-            folder_name (str): [Name of folder to create]
-
-        Returns:
-            [str]: [ID of created folder]
-        """
-        file_metadata = {
-            'name': folder_name,
-            'mimeType': 'application/vnd.google-apps.folder'
-        }
-        try:
-            __file = self.drive_service.files().create(
-                body=file_metadata,
-                fields='id'
-                ).execute()
-            return __file.get("id")
         except Exception as err:
             return str(err)
 
@@ -161,7 +142,7 @@ class GoogleDrive:
         if file_id:
             return await self.__download_file_by_id(file_id=file_id)
         elif file_name:
-            return await self.__download_file_by_name(file_name=file_name)
+            return await self.search_name(file_name=file_name)
 
 
     async def __download_file_by_id(self, file_id):
@@ -175,7 +156,7 @@ class GoogleDrive:
         """
         __file_name = None
 
-        f = await self.list_files()
+        f = await self.search()
         for i in f:
             if i.get("id") == file_id:
                 __file_name = i.get("name")
@@ -195,8 +176,8 @@ class GoogleDrive:
         return f"{__file_name} downloaded"
 
 
-    async def __download_file_by_name(self, file_name):
-        """[Download file by name. By default it searches file with exact name. If founds calls private method to download this file by ID]
+    async def search_name(self, file_name):
+        """[Download file by name. By default it searches file with exact name. If founds calls private method to search this file by ID]
 
         Args:
             file_name ([str]): [Name of a file to download]
@@ -206,12 +187,15 @@ class GoogleDrive:
             [str]: [File not found]
         """
 
-        f = await self.list_files(
-            q=f"name = '{file_name}'"
+        f = await self.search(
+            #q=f"name = '{file_name}'"
+            q= f"name='test.txt'"
         )
         
         if f:
-            return await self.__download_file_by_id(f[0].get("id"))
+            #return await self.__download_file_by_id(f[0].get("id"))
+            return f
 
         return "File not Found"
-        
+
+     
